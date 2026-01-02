@@ -1,0 +1,596 @@
+{% extends 'base.html' %}
+
+{% block title %}中医药问答系统{% endblock %}
+
+{% block page_title %}中草药识别检测{% endblock %}
+
+{% block styles %}
+<style>
+    .upload-area {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        margin-bottom: 20px;
+        background-color: #f8f9fa;
+        transition: all 0.3s;
+    }
+    .upload-area:hover, .upload-area.dragover {
+        border-color: #007bff;
+        background-color: #e9f3fe;
+    }
+    .upload-icon {
+        font-size: 48px;
+        color: #6c757d;
+        margin-bottom: 15px;
+    }
+    .detection-result {
+        margin-top: 30px;
+        display: none;
+    }
+    .result-image {
+        max-width: 100%;
+        max-height: 500px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .progress-container {
+        margin-top: 20px;
+        display: none;
+    }
+    .detection-tabs {
+        margin-bottom: 20px;
+    }
+    .tab-pane {
+        padding: 20px;
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 .25rem .25rem;
+    }
+    .detection-item {
+        margin-bottom: 10px;
+        padding: 10px;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+    }
+    .detection-class {
+        font-weight: bold;
+        color: #007bff;
+    }
+    .detection-confidence {
+        color: #28a745;
+    }
+    .video-detection-status {
+        margin-top: 20px;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <p class="text-muted"></p>
+    </div>
+</div>
+
+{% if not model_available %}
+<div class="alert alert-warning">
+    检测模型未加载或不可用。请联系管理员解决此问题。
+</div>
+{% endif %}
+
+<!-- 检测类型选择标签页 -->
+<ul class="nav nav-tabs detection-tabs" id="detectionTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="image-tab" data-bs-toggle="tab" data-bs-target="#image-pane" type="button" role="tab">
+            图像检测
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-pane" type="button" role="tab">
+            视频检测
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="detectionTabContent">
+    <!-- 图像检测面板 -->
+    <div class="tab-pane fade show active" id="image-pane" role="tabpanel">
+        <div class="card shadow">
+            <div class="card-body">
+                <div id="image-upload-area" class="upload-area">
+                    <div class="upload-icon">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                    </div>
+                    <h5>拖放图像或点击上传</h5>
+                    <p class="text-muted"></p>
+                    <input type="file" id="image-upload" accept="image/*" style="display: none;">
+                    <button class="btn btn-primary" id="image-upload-btn">
+                        选择图像
+                    </button>
+                </div>
+
+                <!-- 进度条 -->
+                <div id="image-progress-container" class="progress-container">
+                    <div class="progress" style="height: 20px;">
+                        <div id="image-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                    </div>
+                    <p class="text-center mt-2" id="image-progress-text">正在上传图像...</p>
+                </div>
+
+                <!-- 检测结果 -->
+                <div id="image-detection-result" class="detection-result">
+                    <!-- 返回按钮在左上角 -->
+                    <div class="mb-3">
+                        <button id="clear-result-btn" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>返回
+                        </button>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h5 class="mb-3"></h5>
+                            
+                            <!-- 同时显示原始图像和检测结果 -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-center mb-2">原始图像</h6>
+                                    <div class="text-center">
+                                        <img id="original-image" class="result-image" alt="原始图像" style="max-height: 550px;">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-center mb-2">检测结果</h6>
+                                    <div class="text-center">
+                                        <img id="result-image" class="result-image" alt="检测结果" style="max-height: 550px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h5>检测结果</h5>
+                            <div id="detection-details">
+                                <div id="detection-list" class="mt-3">
+                                    <!-- 检测结果列表将在这里动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 视频检测面板 -->
+    <div class="tab-pane fade" id="video-pane" role="tabpanel">
+        <div class="card shadow">
+            <div class="card-body">
+                <div id="video-upload-area" class="upload-area">
+                    <div class="upload-icon">
+                        <i class="bi bi-film"></i>
+                    </div>
+                    <h5>拖放视频或点击上传</h5>
+                    <p class="text-muted"></p>
+                    <input type="file" id="video-upload" accept="video/*" style="display: none;">
+                    <button class="btn btn-primary" id="video-upload-btn">
+                        选择视频
+                    </button>
+                </div>
+
+                <!-- 进度条 -->
+                <div id="video-progress-container" class="progress-container">
+                    <div class="progress" style="height: 20px;">
+                        <div id="video-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                    </div>
+                    <p class="text-center mt-2" id="video-progress-text">正在上传视频...</p>
+                </div>
+
+                <!-- 视频处理状态 -->
+                <div id="video-detection-status" class="video-detection-status">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">视频处理状态</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 id="video-status-text">正在处理视频...</h6>
+                            <div class="progress mt-3 mb-3" style="height: 20px;">
+                                <div id="video-processing-progress" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                            </div>
+                            <p id="video-processing-details">预计剩余时间：计算中...</p>
+                            
+                            <div id="video-result-container" style="display: none;">
+                                <div class="text-center">
+                                    <a id="video-result-link" href="#" class="btn btn-success" download>
+                                        下载检测结果视频
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <!-- 添加实时预览区域 -->
+                            <div id="video-preview-container" class="mt-4" style="display: none;">
+                                <h5 class="mb-3">实时处理预览</h5>
+                                <div class="text-center">
+                                    <img id="video-preview" class="result-image" alt="处理预览">
+                                </div>
+                                <div class="progress mt-3" style="height: 20px;">
+                                    <div id="video-preview-progress" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                                </div>
+                                <p class="text-center mt-2" id="video-preview-status">正在处理视频...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 图像检测功能
+    document.addEventListener('DOMContentLoaded', function() {
+        // 图像上传相关元素
+        const imageUploadArea = document.getElementById('image-upload-area');
+        const imageUploadBtn = document.getElementById('image-upload-btn');
+        const imageUploadInput = document.getElementById('image-upload');
+        const imageProgressContainer = document.getElementById('image-progress-container');
+        const imageProgressBar = document.getElementById('image-progress-bar');
+        const imageProgressText = document.getElementById('image-progress-text');
+        const imageDetectionResult = document.getElementById('image-detection-result');
+        const originalImage = document.getElementById('original-image');
+        const resultImage = document.getElementById('result-image');
+        const detectionList = document.getElementById('detection-list');
+
+        // 视频上传相关元素
+        const videoUploadArea = document.getElementById('video-upload-area');
+        const videoUploadBtn = document.getElementById('video-upload-btn');
+        const videoUploadInput = document.getElementById('video-upload');
+        const videoProgressContainer = document.getElementById('video-progress-container');
+        const videoProgressBar = document.getElementById('video-progress-bar');
+        const videoProgressText = document.getElementById('video-progress-text');
+        const videoDetectionStatus = document.getElementById('video-detection-status');
+        const videoStatusText = document.getElementById('video-status-text');
+        const videoProcessingProgress = document.getElementById('video-processing-progress');
+        const videoProcessingDetails = document.getElementById('video-processing-details');
+        const videoResultContainer = document.getElementById('video-result-container');
+        const videoResultLink = document.getElementById('video-result-link');
+
+        // 存储图像URL
+        let originalImageUrl = '';
+        let resultImageUrl = '';
+        let currentTaskId = '';
+        let pollingInterval = null;
+
+        // 图像上传点击事件
+        imageUploadBtn.addEventListener('click', function() {
+            imageUploadInput.click();
+        });
+
+        // 图像选择事件
+        imageUploadInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                uploadImage(this.files[0]);
+            }
+        });
+
+        // 拖放图像事件
+        imageUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+
+        imageUploadArea.addEventListener('dragleave', function() {
+            this.classList.remove('dragover');
+        });
+
+        imageUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                uploadImage(e.dataTransfer.files[0]);
+            }
+        });
+
+
+        // 视频上传点击事件
+        videoUploadBtn.addEventListener('click', function() {
+            videoUploadInput.click();
+        });
+
+        // 视频选择事件
+        videoUploadInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                uploadVideo(this.files[0]);
+            }
+        });
+
+        // 拖放视频事件
+        videoUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+
+        videoUploadArea.addEventListener('dragleave', function() {
+            this.classList.remove('dragover');
+        });
+
+        videoUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                uploadVideo(e.dataTransfer.files[0]);
+            }
+        });
+
+        // 添加清空按钮事件监听
+        const clearResultBtn = document.getElementById('clear-result-btn');
+        clearResultBtn.addEventListener('click', function() {
+            // 清空检测结果
+            imageDetectionResult.style.display = 'none';
+            imageUploadArea.style.display = 'block';
+            originalImage.src = '';
+            resultImage.src = '';
+            detectionList.innerHTML = '';
+            detectionTime.textContent = '0';
+            detectionCount.textContent = '0';
+            originalImageUrl = '';
+            resultImageUrl = '';
+        });
+
+
+        // 上传图像函数
+        function uploadImage(file) {
+            // 检查文件类型
+            const fileType = file.type;
+            if (!fileType.match('image.*')) {
+                alert('请上传图像文件（JPG、JPEG、PNG、GIF）');
+                return;
+            }
+
+            // 显示进度条
+            imageUploadArea.style.display = 'none';
+            imageProgressContainer.style.display = 'block';
+            imageDetectionResult.style.display = 'none';
+            
+            // 创建表单数据
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 发送请求
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/detect/image', true);
+            
+            // 进度监听
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const progress = (e.loaded / e.total) * 100;
+                    imageProgressBar.style.width = progress + '%';
+                    imageProgressText.textContent = '正在上传图像... ' + Math.round(progress) + '%';
+                }
+            };
+            
+            // 上传完成
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    
+                    if (response.success) {
+                        // 保存图像 URL
+                        originalImageUrl = response.original_image;
+                        resultImageUrl = response.result_image;
+                        
+                        // 同时显示原始图像和结果图像
+                        originalImage.src = originalImageUrl;
+                        resultImage.src = resultImageUrl;
+                        
+                        // 生成检测结果列表
+                        detectionList.innerHTML = '';
+                        response.detections.forEach(function(detection) {
+                            const detectionItem = document.createElement('div');
+                            detectionItem.className = 'detection-item';
+                            detectionItem.innerHTML = `
+                                <div class="detection-class">
+                                    ${detection.class_name}
+                                </div>
+                                <div class="detection-confidence">
+                                    置信度: ${(detection.confidence * 100).toFixed(2)}%
+                                </div>
+                            `;
+                            detectionList.appendChild(detectionItem);
+                        });
+                        
+                        // 自动保存到历史记录
+                        fetch('/api/detect/save_to_history', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                type: 'image',
+                                original_image: response.original_image,
+                                result_image: response.result_image,
+                                detections: response.detections,
+                                elapsed_time: response.elapsed_time
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                console.error('保存到历史记录失败：', data.error);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('保存到历史记录时出错：', error);
+                        });
+                        
+                        // 显示检测结果
+                        imageProgressContainer.style.display = 'none';
+                        imageDetectionResult.style.display = 'block';
+                    } else {
+                        showError('检测失败: ' + response.error);
+                    }
+                } else {
+                    showError('请求失败: ' + xhr.status);
+                }
+            };
+            
+            // 发送失败
+            xhr.onerror = function() {
+                showError('网络错误，请稍后重试');
+            };
+            
+            // 发送请求
+            xhr.send(formData);
+        }
+
+        // 修改视频上传函数
+        function uploadVideo(file) {
+            // 检查文件类型
+            const fileType = file.type;
+            if (!fileType.match('video.*')) {
+                alert('请上传视频文件（MP4、AVI、MOV）');
+                return;
+            }
+
+            // 显示进度条
+            videoUploadArea.style.display = 'none';
+            videoProgressContainer.style.display = 'block';
+            videoDetectionStatus.style.display = 'none';
+            videoResultContainer.style.display = 'none';
+            document.getElementById('video-preview-container').style.display = 'none';
+            
+            // 创建表单数据
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 发送请求
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/detect/video', true);
+            
+            // 进度监听
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    const progress = (e.loaded / e.total) * 100;
+                    videoProgressBar.style.width = progress + '%';
+                    videoProgressText.textContent = '正在上传视频... ' + Math.round(progress) + '%';
+                }
+            };
+            
+            // 上传完成
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    
+                    if (response.success) {
+                        // 保存任务ID
+                        currentTaskId = response.task_id;
+                        
+                        // 显示处理状态和预览
+                        videoProgressContainer.style.display = 'none';
+                        videoDetectionStatus.style.display = 'block';
+                        document.getElementById('video-preview-container').style.display = 'block';
+                        
+                        // 开始轮询处理状态
+                        startPollingVideoStatus();
+                    } else {
+                        showVideoError('上传失败: ' + response.error);
+                    }
+                } else {
+                    showVideoError('请求失败: ' + xhr.status);
+                }
+            };
+            
+            // 发送失败
+            xhr.onerror = function() {
+                showVideoError('网络错误，请稍后重试');
+            };
+            
+            // 发送请求
+            xhr.send(formData);
+        }
+
+        // 轮询视频处理状态
+        function startPollingVideoStatus() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+            
+            const videoPreview = document.getElementById('video-preview');
+            const videoPreviewProgress = document.getElementById('video-preview-progress');
+            const videoPreviewStatus = document.getElementById('video-preview-status');
+            
+            pollingInterval = setInterval(function() {
+                fetch(`/api/detect/video/status/${currentTaskId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('收到视频处理状态:', data);  // 添加调试日志
+                        
+                        if (data.status === 'error') {
+                            // 处理出错
+                            videoPreviewStatus.textContent = '视频处理失败！';
+                            videoPreviewProgress.classList.remove('progress-bar-animated');
+                            videoPreviewProgress.classList.remove('bg-primary');
+                            videoPreviewProgress.classList.add('bg-danger');
+                            videoPreviewStatus.textContent = `错误: ${data.error}`;
+                            
+                            // 停止轮询
+                            clearInterval(pollingInterval);
+                        } else if (data.status === 'uploaded') {
+                            // 视频已上传，等待处理
+                            videoPreviewStatus.textContent = '视频已上传，等待处理...';
+                            videoPreviewProgress.style.width = '0%';
+                        } else if (data.status === 'processing') {
+                            // 显示当前帧和进度
+                            if (data.current_frame) {
+                                videoPreview.src = 'data:image/jpeg;base64,' + data.current_frame;
+                            }
+                            videoPreviewProgress.style.width = `${data.progress}%`;
+                            videoPreviewStatus.textContent = `处理进度: ${data.progress}% (${data.processed_frames}/${data.total_frames} 帧)`;
+                        } else if (data.status === 'completed') {
+                            console.log('视频处理完成，显示结果');  // 添加调试日志
+                            
+                            // 处理完成
+                            videoPreviewStatus.textContent = '视频处理完成！';
+                            videoPreviewProgress.style.width = '100%';
+                            videoPreviewProgress.classList.remove('progress-bar-animated');
+                            
+                            // 显示结果视频链接
+                            videoResultContainer.style.display = 'block';
+                            const resultPath = data.result_path;
+                            console.log('结果视频路径:', resultPath);  // 添加调试日志
+                            // 提取文件名并使用下载API
+                            const fileName = resultPath.split('/').pop();
+                            videoResultLink.href = `/api/detect/download_video/${fileName}`;
+                            videoResultLink.download = fileName;
+                            
+                            // 停止轮询
+                            clearInterval(pollingInterval);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取视频处理状态失败:', error);
+                    });
+            }, 100);  // 每100ms轮询一次
+        }
+
+        // 显示图像检测错误
+        function showError(message) {
+            imageProgressContainer.style.display = 'none';
+            imageUploadArea.style.display = 'block';
+            alert(message);
+        }
+
+        // 显示视频检测错误
+        function showVideoError(message) {
+            videoProgressContainer.style.display = 'none';
+            videoUploadArea.style.display = 'block';
+            alert(message);
+        }
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,380 @@
+/* 主题色彩系统 - 中医药问答系统 */
+
+/* ========================================
+   默认主题 - 教育蓝
+   ======================================== */
+:root {
+    /* 主色调 */
+    --primary-color: #4e73df;
+    --primary-hover: #3a5bc7;
+    --primary-light: #6c8aef;
+    --primary-dark: #2e4ba7;
+    
+    /* 成功色 */
+    --success-color: #1cc88a;
+    --success-hover: #17a673;
+    --success-light: #3dd5a0;
+    
+    /* 信息色 */
+    --info-color: #36b9cc;
+    --info-hover: #2c9faf;
+    --info-light: #4ec9db;
+    
+    /* 警告色 */
+    --warning-color: #f6c23e;
+    --warning-hover: #dda20a;
+    --warning-light: #f8d068;
+    
+    /* 危险色 */
+    --danger-color: #e74a3b;
+    --danger-hover: #c92a1f;
+    --danger-light: #ed6b5e;
+    
+    /* 中性色 */
+    --secondary-color: #858796;
+    --dark-color: #2c3e50;
+    --light-color: #f8f9fc;
+    
+    /* 背景色 */
+    --body-bg: #f8f9fc;
+    --sidebar-bg: #2c3e50;
+    --card-bg: #ffffff;
+    --navbar-bg: #ffffff;
+    
+    /* 文字色 */
+    --text-primary: #5a5c69;
+    --text-secondary: #858796;
+    --text-light: #ffffff;
+    --text-dark: #2c3e50;
+    
+    /* 边框色 */
+    --border-color: #e3e6f0;
+    --border-light: #f0f0f0;
+    
+    /* 阴影 */
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+    --shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,0.15);
+    --shadow-lg: 0 1rem 3rem rgba(0,0,0,0.175);
+}
+
+/* ========================================
+   主题1: 科技绿
+   ======================================== */
+[data-theme="tech-green"] {
+    --primary-color: #10b981;
+    --primary-hover: #059669;
+    --primary-light: #34d399;
+    --primary-dark: #047857;
+    
+    --success-color: #22c55e;
+    --success-hover: #16a34a;
+    
+    --info-color: #14b8a6;
+    --info-hover: #0d9488;
+    
+    --warning-color: #f59e0b;
+    --warning-hover: #d97706;
+    
+    --sidebar-bg: #064e3b;
+    --navbar-bg: #f0fdf4;
+    --body-bg: #f0fdf4;
+}
+
+/* ========================================
+   主题2: 活力橙
+   ======================================== */
+[data-theme="vibrant-orange"] {
+    --primary-color: #f97316;
+    --primary-hover: #ea580c;
+    --primary-light: #fb923c;
+    --primary-dark: #c2410c;
+    
+    --success-color: #84cc16;
+    --success-hover: #65a30d;
+    
+    --info-color: #06b6d4;
+    --info-hover: #0891b2;
+    
+    --warning-color: #eab308;
+    --warning-hover: #ca8a04;
+    
+    --sidebar-bg: #7c2d12;
+    --navbar-bg: #fff7ed;
+    --body-bg: #fff7ed;
+}
+
+/* ========================================
+   主题3: 优雅紫
+   ======================================== */
+[data-theme="elegant-purple"] {
+    --primary-color: #8b5cf6;
+    --primary-hover: #7c3aed;
+    --primary-light: #a78bfa;
+    --primary-dark: #6d28d9;
+    
+    --success-color: #10b981;
+    --success-hover: #059669;
+    
+    --info-color: #3b82f6;
+    --info-hover: #2563eb;
+    
+    --warning-color: #f59e0b;
+    --warning-hover: #d97706;
+    
+    --sidebar-bg: #4c1d95;
+    --navbar-bg: #faf5ff;
+    --body-bg: #faf5ff;
+}
+
+/* ========================================
+   主题4: 深夜蓝
+   ======================================== */
+[data-theme="midnight-blue"] {
+    --primary-color: #3b82f6;
+    --primary-hover: #2563eb;
+    --primary-light: #60a5fa;
+    --primary-dark: #1e40af;
+    
+    --success-color: #10b981;
+    --success-hover: #059669;
+    
+    --info-color: #06b6d4;
+    --info-hover: #0891b2;
+    
+    --warning-color: #f59e0b;
+    --warning-hover: #d97706;
+    
+    --sidebar-bg: #1e3a8a;
+    --navbar-bg: #eff6ff;
+    --body-bg: #eff6ff;
+}
+
+/* ========================================
+   主题5: 玫瑰红
+   ======================================== */
+[data-theme="rose-red"] {
+    --primary-color: #e11d48;
+    --primary-hover: #be123c;
+    --primary-light: #f43f5e;
+    --primary-dark: #9f1239;
+    
+    --success-color: #10b981;
+    --success-hover: #059669;
+    
+    --info-color: #06b6d4;
+    --info-hover: #0891b2;
+    
+    --warning-color: #f59e0b;
+    --warning-hover: #d97706;
+    
+    --sidebar-bg: #881337;
+    --navbar-bg: #fff1f2;
+    --body-bg: #fff1f2;
+}
+
+/* ========================================
+   主题6: 暗黑模式
+   ======================================== */
+[data-theme="dark"] {
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-light: #818cf8;
+    --primary-dark: #4338ca;
+    
+    --success-color: #22c55e;
+    --success-hover: #16a34a;
+    
+    --info-color: #14b8a6;
+    --info-hover: #0d9488;
+    
+    --warning-color: #f59e0b;
+    --warning-hover: #d97706;
+    
+    --danger-color: #ef4444;
+    --danger-hover: #dc2626;
+    
+    /* 暗黑模式特殊配色 */
+    --body-bg: #1a1a1a;
+    --sidebar-bg: #0f0f0f;
+    --card-bg: #2a2a2a;
+    --navbar-bg: #2a2a2a;
+    
+    --text-primary: #e5e7eb;
+    --text-secondary: #9ca3af;
+    --text-light: #f3f4f6;
+    --text-dark: #111827;
+    
+    --border-color: #374151;
+    --border-light: #4b5563;
+    
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0,0,0,0.3);
+    --shadow: 0 0.15rem 1.75rem 0 rgba(0,0,0,0.4);
+    --shadow-lg: 0 1rem 3rem rgba(0,0,0,0.5);
+}
+
+/* ========================================
+   主题应用到组件
+   ======================================== */
+
+/* 主按钮 */
+.btn-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+.btn-primary:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+}
+
+/* 成功按钮 */
+.btn-success {
+    background-color: var(--success-color) !important;
+    border-color: var(--success-color) !important;
+}
+.btn-success:hover {
+    background-color: var(--success-hover) !important;
+}
+
+/* 信息按钮 */
+.btn-info {
+    background-color: var(--info-color) !important;
+    border-color: var(--info-color) !important;
+}
+.btn-info:hover {
+    background-color: var(--info-hover) !important;
+}
+
+/* 警告按钮 */
+.btn-warning {
+    background-color: var(--warning-color) !important;
+    border-color: var(--warning-color) !important;
+}
+.btn-warning:hover {
+    background-color: var(--warning-hover) !important;
+}
+
+/* 危险按钮 */
+.btn-danger {
+    background-color: var(--danger-color) !important;
+    border-color: var(--danger-color) !important;
+}
+.btn-danger:hover {
+    background-color: var(--danger-hover) !important;
+}
+
+/* 侧边栏 */
+.sidebar {
+    background-color: var(--sidebar-bg) !important;
+}
+
+/* 导航栏 */
+.top-navbar {
+    background-color: var(--navbar-bg) !important;
+}
+
+/* 主体背景 */
+body {
+    background-color: var(--body-bg) !important;
+}
+
+/* 卡片 */
+.card {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* 文字颜色 */
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+/* 边框 */
+.border-left-primary {
+    border-left-color: var(--primary-color) !important;
+}
+.border-left-success {
+    border-left-color: var(--success-color) !important;
+}
+.border-left-info {
+    border-left-color: var(--info-color) !important;
+}
+.border-left-warning {
+    border-left-color: var(--warning-color) !important;
+}
+
+/* 进度条 */
+.progress-bar {
+    background-color: var(--primary-color) !important;
+}
+
+/* 链接 */
+a {
+    color: var(--primary-color);
+}
+a:hover {
+    color: var(--primary-hover);
+}
+
+/* 徽章 */
+.badge.bg-primary {
+    background-color: var(--primary-color) !important;
+}
+.badge.bg-success {
+    background-color: var(--success-color) !important;
+}
+.badge.bg-info {
+    background-color: var(--info-color) !important;
+}
+.badge.bg-warning {
+    background-color: var(--warning-color) !important;
+}
+.badge.bg-danger {
+    background-color: var(--danger-color) !important;
+}
+
+/* 暗黑模式特殊样式 */
+[data-theme="dark"] .card-header {
+    background-color: #1f1f1f !important;
+    color: var(--text-light) !important;
+}
+
+[data-theme="dark"] .table {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .table thead {
+    background-color: #1f1f1f !important;
+}
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: #2a2a2a !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .modal-content {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link {
+    color: #9ca3af !important;
+}
+
+[data-theme="dark"] .sidebar .nav-link:hover,
+[data-theme="dark"] .sidebar .nav-link.active {
+    color: var(--text-light) !important;
+    background-color: rgba(255,255,255,0.1) !important;
+}
+
+/* 主题切换动画 */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* 禁用某些元素的过渡效果以避免闪烁 */
+.no-theme-transition {
+    transition: none !important;
+}
+

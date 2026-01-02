@@ -1,0 +1,861 @@
+{% extends 'base.html' %}
+
+{% block title %}AI聊天 - 中医药问答系统{% endblock %}
+
+{% block page_title %}中医药问答科普助手{% endblock %}
+
+{% block styles %}
+<!-- Markdown渲染和代码高亮CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+<style>
+    .chat-container {
+        height: calc(100vh - 250px);
+        min-height: 500px;
+        max-height: calc(100vh - 250px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .chat-sidebar {
+        background-color: #f8f9fa;
+        border-right: 1px solid #dee2e6;
+        overflow-y: auto;
+    }
+    
+    /* 侧边栏滚动条样式 */
+    .chat-sidebar::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .chat-sidebar::-webkit-scrollbar-track {
+        background: #f8f9fa;
+    }
+    
+    .chat-sidebar::-webkit-scrollbar-thumb {
+        background: #dee2e6;
+        border-radius: 3px;
+    }
+    
+    .chat-sidebar::-webkit-scrollbar-thumb:hover {
+        background: #c1c1c1;
+    }
+    .chat-history {
+        overflow-y: auto;
+        padding: 20px;
+        background-color: #f9f9f9;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        min-height: 0;
+    }
+    
+    .chat-input {
+        margin-top: 20px;
+    }
+    
+    .chat-input .form-control {
+        border-radius: 25px;
+        padding: 12px 20px;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+    }
+    
+    .chat-input .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.1);
+        transform: translateY(-1px);
+    }
+    
+    .chat-input .btn {
+        border-radius: 25px;
+        padding: 12px 24px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .chat-input .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    }
+    .chat-message {
+        margin-bottom: 15px;
+        max-width: 80%;
+    }
+    .user-message {
+        margin-left: auto;
+        background-color: #dcf8c6;
+        border-radius: 10px 0 10px 10px;
+        padding: 10px 15px;
+    }
+    .assistant-message {
+        margin-right: auto;
+        background-color: white;
+        border-radius: 0 10px 10px 10px;
+        padding: 10px 15px;
+        border: 1px solid #e9ecef;
+    }
+    .message-time {
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-top: 5px;
+        text-align: right;
+    }
+    .conversation-item {
+        cursor: pointer;
+        padding: 10px 15px;
+        border-bottom: 1px solid #dee2e6;
+        transition: background-color 0.2s;
+    }
+    .conversation-item:hover {
+        background-color: #e9ecef;
+    }
+    .conversation-item.active {
+        background-color: #e9ecef;
+        border-left: 3px solid #007bff;
+    }
+    .conversation-title {
+        font-weight: bold;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .conversation-date {
+        font-size: 0.7rem;
+        color: #6c757d;
+    }
+    .sidebar-header {
+        padding: 15px;
+        font-weight: bold;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .create-chat-btn {
+        margin: 15px;
+    }
+    
+    /* Markdown样式 */
+    .message-content h1, .message-content h2, .message-content h3, 
+    .message-content h4, .message-content h5, .message-content h6 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+    }
+    
+    .message-content h1 { font-size: 1.5rem; }
+    .message-content h2 { font-size: 1.3rem; }
+    .message-content h3 { font-size: 1.1rem; }
+    .message-content h4 { font-size: 1rem; }
+    
+    .message-content p {
+        margin-bottom: 0.8rem;
+        line-height: 1.5;
+    }
+    
+    .message-content ul, .message-content ol {
+        margin-bottom: 0.8rem;
+        padding-left: 1.5rem;
+    }
+    
+    .message-content li {
+        margin-bottom: 0.3rem;
+    }
+    
+    .message-content blockquote {
+        border-left: 4px solid #ddd;
+        margin: 0.8rem 0;
+        padding-left: 1rem;
+        color: #666;
+        font-style: italic;
+    }
+    
+    .message-content code {
+        background-color: #f4f4f4;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9rem;
+    }
+    
+    .message-content pre {
+        background-color: #f8f8f8;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 1rem;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 300px;
+        margin: 0.8rem 0;
+    }
+    
+    .message-content pre code {
+        background-color: transparent;
+        padding: 0;
+        border-radius: 0;
+    }
+    
+    .message-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 0.8rem 0;
+    }
+    
+    .message-content th, .message-content td {
+        border: 1px solid #ddd;
+        padding: 0.5rem;
+        text-align: left;
+    }
+    
+    .message-content th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    
+    .message-content strong {
+        font-weight: bold;
+    }
+    
+    .message-content em {
+        font-style: italic;
+    }
+    
+    .message-content a {
+        color: #007bff;
+        text-decoration: none;
+    }
+    
+    .message-content a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <p class="text-muted"></p>
+    </div>
+</div>
+
+<div class="row chat-container">
+    <!-- 对话历史侧边栏 -->
+    <div class="col-md-3 chat-sidebar">
+        <div class="sidebar-header">
+            历史对话
+        </div>
+        <div class="d-grid gap-2 create-chat-btn">
+            <button id="new-chat-btn" class="btn btn-primary">
+                新建对话
+            </button>
+        </div>
+        <div id="conversation-list">
+            <!-- 对话历史列表会动态生成 -->
+            <div class="text-center text-muted p-3" id="no-conversations-message">
+                暂无聊天记录
+            </div>
+        </div>
+    </div>
+    
+    <!-- 聊天主界面 -->
+    <div class="col-md-9 d-flex flex-column h-100">
+        <div class="chat-history flex-grow-1" id="chat-history">
+            <!-- 欢迎消息 -->
+            <div class="chat-message assistant-message">
+                <div class="message-content">
+                    您好！我是中草药知识科普的AI助手。请问有什么可以帮助你的？
+                </div>
+                <div class="message-time">刚刚</div>
+            </div>
+        </div>
+        
+        <!-- 输入框 -->
+        <div class="chat-input flex-shrink-0">
+            <form id="chat-form" class="d-flex align-items-end">
+                <div class="input-group flex-grow-1">
+                    <button type="button" id="image-upload-btn" class="btn btn-outline-secondary" title="上传中草药图片">
+                        <i class="bi bi-plus-circle"></i>
+                    </button>
+                    <input type="text" id="message-input" class="form-control" placeholder="输入消息或上传中草药图片进行识别..." autofocus>
+                    <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+                </div>
+                <button type="submit" class="btn btn-primary ms-2">
+                    发送
+                </button>
+            </form>
+            <!-- 图片预览区域 -->
+            <div id="image-preview-container" class="mt-2" style="display: none;">
+                <div class="image-preview-wrapper position-relative d-inline-block">
+                    <img id="image-preview" class="img-thumbnail" style="max-width: 200px; max-height: 150px;">
+                    <button type="button" id="remove-image-btn" class="btn btn-sm btn-danger position-absolute top-0 end-0 rounded-circle" style="width: 25px; height: 25px; padding: 0; margin: 5px;">
+                        <i class="bi bi-x" style="font-size: 12px;"></i>
+                    </button>
+                </div>
+                <div class="mt-1">
+                    <small class="text-muted">点击发送进行中草药识别</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Markdown渲染和代码高亮库 -->
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+<script>
+    // 配置marked和highlight.js
+    marked.setOptions({
+        highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+                try {
+                    return hljs.highlight(code, { language: lang }).value;
+                } catch (err) {}
+            }
+            return hljs.highlightAuto(code).value;
+        },
+        breaks: true,
+        gfm: true
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取DOM元素
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const chatHistory = document.getElementById('chat-history');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const conversationList = document.getElementById('conversation-list');
+        const noConversationsMessage = document.getElementById('no-conversations-message');
+        const imageUploadBtn = document.getElementById('image-upload-btn');
+        const imageUploadInput = document.getElementById('image-upload-input');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const removeImageBtn = document.getElementById('remove-image-btn');
+        
+        // 当前对话ID和上传的图片
+        let currentConversationId = null;
+        let uploadedImage = null;
+        
+        // 加载对话列表
+        loadConversations();
+        
+        // 新建对话按钮点击事件
+        newChatBtn.addEventListener('click', function() {
+            createNewConversation();
+        });
+        
+        // 图片上传按钮点击事件
+        imageUploadBtn.addEventListener('click', function() {
+            imageUploadInput.click();
+        });
+        
+        // 图片选择事件
+        imageUploadInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // 检查文件类型
+                if (!file.type.startsWith('image/')) {
+                    alert('请选择图片文件');
+                    return;
+                }
+                
+                // 检查文件大小 (限制为10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('图片文件过大，请选择小于10MB的图片');
+                    return;
+                }
+                
+                uploadedImage = file;
+                
+                // 显示图片预览
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // 移除图片按钮点击事件
+        removeImageBtn.addEventListener('click', function() {
+            uploadedImage = null;
+            imagePreviewContainer.style.display = 'none';
+            imageUploadInput.value = '';
+        });
+        
+        // 表单提交事件
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const message = messageInput.value.trim();
+            
+            // 检查是否有消息或图片
+            if (message || uploadedImage) {
+                // 生成新的对话ID（如果需要）
+                if (!currentConversationId) {
+                    currentConversationId = `conv_${Date.now()}`;
+                }
+                
+                // 如果有图片，进行图片识别
+                if (uploadedImage) {
+                    handleImageUpload(message || '请识别这张中草药图片', currentConversationId);
+                } else {
+                    // 添加用户消息到界面
+                    addMessage(message, 'user');
+                    
+                    // 清空输入框
+                    messageInput.value = '';
+                    
+                    // 发送消息到服务器
+                    sendMessage(message, currentConversationId);
+                }
+            }
+        });
+        
+        // 处理图片上传和识别
+        function handleImageUpload(message, conversationId) {
+            // 添加用户消息到界面（包含图片预览）
+            addImageMessage(message, uploadedImage, 'user');
+            
+            // 清空输入框和图片
+            messageInput.value = '';
+            const imageFile = uploadedImage;
+            uploadedImage = null;
+            imagePreviewContainer.style.display = 'none';
+            imageUploadInput.value = '';
+            
+            // 创建FormData进行图片上传
+            const formData = new FormData();
+            formData.append('file', imageFile);
+            
+            // 显示处理中的消息
+            const processingMessageDiv = document.createElement('div');
+            processingMessageDiv.className = 'chat-message assistant-message';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.innerHTML = '正在识别中草药图片，请稍候...';
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.innerText = '正在处理...';
+            
+            processingMessageDiv.appendChild(messageContent);
+            processingMessageDiv.appendChild(messageTime);
+            chatHistory.appendChild(processingMessageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            
+            // 调用YOLO检测API
+            fetch('/api/detect/image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 检测成功，构建包含检测结果的消息
+                    let detectionMessage = `我上传了一张中草药图片，请帮我分析识别结果：\n\n`;
+                    detectionMessage += `检测到 ${data.detections.length} 个中草药对象：\n`;
+                    
+                    data.detections.forEach((detection, index) => {
+                        detectionMessage += `${index + 1}. ${detection.class_name} (置信度: ${(detection.confidence * 100).toFixed(1)}%)\n`;
+                    });
+                    
+                    detectionMessage += `\n请详细介绍这些中草药的功效、用法和注意事项。`;
+                    
+                    // 移除处理中的消息
+                    chatHistory.removeChild(processingMessageDiv);
+                    
+                    // 添加检测结果图片到聊天记录
+                    addDetectionResultMessage(data, 'assistant');
+                    
+                    // 发送检测结果给LLM进行解释
+                    sendMessage(detectionMessage, conversationId);
+                } else {
+                    // 检测失败
+                    messageContent.innerHTML = `图片识别失败: ${data.error}`;
+                    messageTime.innerText = '刚刚';
+                }
+            })
+            .catch(error => {
+                console.error('图片识别失败:', error);
+                messageContent.innerHTML = '抱歉，图片识别过程中出现错误，请稍后重试。';
+                messageTime.innerText = '刚刚';
+            });
+        }
+        
+        // 发送消息到服务器（流式版本）
+        function sendMessage(message, conversationId) {
+            // 创建一个空的助手消息容器
+            const assistantMessageDiv = document.createElement('div');
+            assistantMessageDiv.className = 'chat-message assistant-message';
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.innerText = '正在输入...';
+            
+            assistantMessageDiv.appendChild(messageContent);
+            assistantMessageDiv.appendChild(messageTime);
+            chatHistory.appendChild(assistantMessageDiv);
+            
+            // 滚动到底部
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            
+            // 使用fetch进行流式接收
+            fetch('/api/chat/stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    conversation_id: conversationId
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('网络响应不正常');
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullResponse = '';
+                
+                function readStream() {
+                    return reader.read().then(({ done, value }) => {
+                        if (done) {
+                            messageTime.innerText = '刚刚';
+                            loadConversations();
+                            return;
+                        }
+                        
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    
+                                    if (data.error) {
+                                        messageContent.innerText = '抱歉，发生了错误: ' + data.error;
+                                        messageTime.innerText = '刚刚';
+                                        return;
+                                    }
+                                    
+                                    if (data.chunk) {
+                                        fullResponse += data.chunk;
+                                        // 实时渲染Markdown
+                                        messageContent.innerHTML = marked.parse(fullResponse);
+                                        // 高亮代码块
+                                        messageContent.querySelectorAll('pre code').forEach((block) => {
+                                            hljs.highlightElement(block);
+                                        });
+                                        // 滚动到底部
+                                        chatHistory.scrollTop = chatHistory.scrollHeight;
+                                    }
+                                    
+                                    if (data.done) {
+                                        messageTime.innerText = '刚刚';
+                                        currentConversationId = data.conversation_id;
+                                        loadConversations();
+                                        return;
+                                    }
+                                } catch (e) {
+                                    // 忽略解析错误，继续处理下一行
+                                }
+                            }
+                        }
+                        
+                        return readStream();
+                    });
+                }
+                
+                return readStream();
+            })
+            .catch(error => {
+                console.error('流式请求失败:', error);
+                messageContent.innerText = '抱歉，消息发送失败，请稍后重试。';
+                messageTime.innerText = '刚刚';
+            });
+        }
+        
+        // 添加消息到聊天记录
+        function addMessage(content, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role}-message`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            // 根据角色决定是否渲染Markdown
+            if (role === 'assistant') {
+                // AI回复使用Markdown渲染
+                messageContent.innerHTML = marked.parse(content);
+                // 高亮代码块
+                messageContent.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            } else {
+                // 用户消息使用纯文本
+                messageContent.innerText = content;
+            }
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.innerText = '刚刚';
+            
+            messageDiv.appendChild(messageContent);
+            messageDiv.appendChild(messageTime);
+            
+            chatHistory.appendChild(messageDiv);
+            
+            // 滚动到底部
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        
+        // 添加带图片的消息到聊天记录
+        function addImageMessage(content, imageFile, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role}-message`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            // 添加文本内容
+            const textDiv = document.createElement('div');
+            textDiv.innerText = content;
+            messageContent.appendChild(textDiv);
+            
+            // 添加图片预览
+            if (imageFile) {
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'mt-2';
+                
+                const img = document.createElement('img');
+                img.className = 'img-thumbnail';
+                img.style.maxWidth = '300px';
+                img.style.maxHeight = '200px';
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(imageFile);
+                
+                imageDiv.appendChild(img);
+                messageContent.appendChild(imageDiv);
+            }
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.innerText = '刚刚';
+            
+            messageDiv.appendChild(messageContent);
+            messageDiv.appendChild(messageTime);
+            
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        
+        // 添加检测结果消息到聊天记录
+        function addDetectionResultMessage(detectionData, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role}-message`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            // 添加检测结果标题
+            const titleDiv = document.createElement('div');
+            titleDiv.innerHTML = '<strong>🔍 中草药识别结果</strong>';
+            titleDiv.className = 'mb-2';
+            messageContent.appendChild(titleDiv);
+            
+            // 添加检测结果图片
+            if (detectionData.result_image) {
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'mb-2';
+                
+                const img = document.createElement('img');
+                img.className = 'img-thumbnail';
+                img.style.maxWidth = '400px';
+                img.style.maxHeight = '300px';
+                img.src = detectionData.result_image;
+                img.alt = '检测结果图片';
+                
+                imageDiv.appendChild(img);
+                messageContent.appendChild(imageDiv);
+            }
+            
+            // 添加检测统计信息
+            const statsDiv = document.createElement('div');
+            statsDiv.className = 'detection-stats mb-2';
+            statsDiv.innerHTML = `
+                <small class="text-muted">
+                    检测到 <strong>${detectionData.detections.length}</strong> 个中草药对象，
+                    用时 <strong>${detectionData.elapsed_time.toFixed(2)}</strong> 秒
+                </small>
+            `;
+            messageContent.appendChild(statsDiv);
+            
+            // 添加检测详情列表
+            if (detectionData.detections && detectionData.detections.length > 0) {
+                const detailsDiv = document.createElement('div');
+                detailsDiv.className = 'detection-details';
+                
+                const listDiv = document.createElement('div');
+                listDiv.innerHTML = '<strong>识别结果：</strong>';
+                
+                const ul = document.createElement('ul');
+                ul.className = 'list-unstyled mt-1';
+                
+                detectionData.detections.forEach((detection, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'mb-1';
+                    li.innerHTML = `
+                        <span class="badge bg-primary me-2">${index + 1}</span>
+                        <strong>${detection.class_name}</strong> 
+                        <span class="text-muted">(置信度: ${(detection.confidence * 100).toFixed(1)}%)</span>
+                    `;
+                    ul.appendChild(li);
+                });
+                
+                detailsDiv.appendChild(listDiv);
+                detailsDiv.appendChild(ul);
+                messageContent.appendChild(detailsDiv);
+            }
+            
+            const messageTime = document.createElement('div');
+            messageTime.className = 'message-time';
+            messageTime.innerText = '刚刚';
+            
+            messageDiv.appendChild(messageContent);
+            messageDiv.appendChild(messageTime);
+            
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        
+        // 加载对话列表
+        function loadConversations() {
+            fetch('/api/chat/conversations')
+                .then(response => response.json())
+                .then(conversations => {
+                    // 清空列表
+                    conversationList.innerHTML = '';
+                    
+                    if (conversations.length === 0) {
+                        noConversationsMessage.style.display = 'block';
+                    } else {
+                        noConversationsMessage.style.display = 'none';
+                        
+                        // 排序对话（最新的在前）
+                        conversations.sort((a, b) => b.updated_at - a.updated_at);
+                        
+                        conversations.forEach(conversation => {
+                            const item = document.createElement('div');
+                            item.className = 'conversation-item';
+                            if (conversation.id === currentConversationId) {
+                                item.classList.add('active');
+                            }
+                            
+                            const title = document.createElement('div');
+                            title.className = 'conversation-title';
+                            title.innerText = conversation.title;
+                            
+                            const date = document.createElement('div');
+                            date.className = 'conversation-date';
+                            date.innerText = formatDate(conversation.updated_at);
+                            
+                            item.appendChild(title);
+                            item.appendChild(date);
+                            
+                            item.addEventListener('click', function() {
+                                loadConversation(conversation.id);
+                            });
+                            
+                            conversationList.appendChild(item);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('加载对话列表失败:', error);
+                });
+        }
+        
+        // 加载特定对话
+        function loadConversation(conversationId) {
+            fetch(`/api/chat/history/${conversationId}`)
+                .then(response => response.json())
+                .then(conversation => {
+                    // 设置当前对话ID
+                    currentConversationId = conversationId;
+                    
+                    // 清空聊天记录
+                    chatHistory.innerHTML = '';
+                    
+                    // 添加消息
+                    conversation.messages.forEach(message => {
+                        addMessage(message.content, message.role);
+                    });
+                    
+                    // 更新活动对话项
+                    const items = document.querySelectorAll('.conversation-item');
+                    items.forEach(item => {
+                        item.classList.remove('active');
+                        const title = item.querySelector('.conversation-title');
+                        if (title.innerText === conversation.title) {
+                            item.classList.add('active');
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('加载对话失败:', error);
+                });
+        }
+        
+        // 创建新对话
+        function createNewConversation() {
+            // 重置当前对话ID
+            currentConversationId = null;
+            
+            // 清空聊天记录
+            chatHistory.innerHTML = '';
+            
+            // 添加欢迎消息
+            addMessage('您好！我是中医药问答科普AI助手。请问有什么可以帮助您的？', 'assistant');
+            
+            // 更新活动对话项
+            const items = document.querySelectorAll('.conversation-item');
+            items.forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // 焦点到输入框
+            messageInput.focus();
+        }
+        
+        // 格式化日期
+        function formatDate(timestamp) {
+            const date = new Date(timestamp * 1000);
+            const now = new Date();
+            
+            // 如果是今天，只显示时间
+            if (date.toDateString() === now.toDateString()) {
+                return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            }
+            
+            // 如果是今年，显示月日和时间
+            if (date.getFullYear() === now.getFullYear()) {
+                return date.toLocaleString([], {month: 'short', day: '2-digit'});
+            }
+            
+            // 否则显示完整日期
+            return date.toLocaleString([], {year: 'numeric', month: 'short', day: '2-digit'});
+        }
+    });
+</script>
+{% endblock %} 

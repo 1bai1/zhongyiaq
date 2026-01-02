@@ -1,0 +1,9 @@
+[
+    {
+        "id": "bf2e6cf9-f877-474f-b6e6-4b603c666aa5",
+        "username": "test",
+        "password_hash": "scrypt:32768:8:1$7PxA0w0FilMN1rzx$b746ebcc4a4e616a431a5b1d8a73e2f057453e1af3924ef2187e8774f952329f0cc9123f3987d02269921eff0074179287ef26fc25cb75fb33a5481a0f1f7282",
+        "created_at": "2025-11-22T23:34:56.841063",
+        "theme": "default"
+    }
+]

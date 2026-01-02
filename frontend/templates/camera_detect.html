@@ -1,0 +1,425 @@
+{% extends 'base.html' %}
+
+{% block title %}摄像头实时检测 - 中医药问答系统{% endblock %}
+
+{% block page_title %}中草药实时识别{% endblock %}
+
+{% block styles %}
+<style>
+    .camera-container {
+        position: relative;
+        max-width: 100%;
+        margin: 0 auto;
+        overflow: hidden;
+        background-color: #000;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    .camera-view {
+        display: block;
+        width: 100%;
+        max-height: 75vh;
+        object-fit: contain;
+    }
+    .camera-overlay {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 8px 12px;
+        background-color: rgba(0,0,0,0.6);
+        color: white;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    .status-live {
+        background-color: #dc3545;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    .controls-panel {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .detection-stats {
+        background-color: #fff;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .stat-item:last-child {
+        border-bottom: none;
+    }
+    .stat-label {
+        font-weight: 500;
+        color: #555;
+    }
+    .stat-value {
+        font-weight: 600;
+        color: #007bff;
+    }
+    .detection-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .detection-item {
+        margin-bottom: 8px;
+        padding: 8px 12px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        border-left: 4px solid #007bff;
+    }
+    #errorMessage {
+        display: none;
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <p class="text-muted"></p>
+    </div>
+</div>
+
+{% if not model_available %}
+<div class="alert alert-warning">
+    检测模型未加载或不可用。请联系管理员解决此问题。
+</div>
+{% endif %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="camera-container">
+                <video id="videoElement" class="camera-view" autoplay playsinline style="display: none;"></video>
+                <canvas id="canvasElement" class="camera-view"></canvas>
+                <div class="camera-overlay">
+                    <span class="status-indicator status-live" id="statusIndicator"></span><span id="statusText">正在启动...</span>
+                </div>
+            </div>
+            
+            <div class="controls-panel">
+                <div class="row justify-content-center">
+                    <div class="col-md-5 mb-2">
+                        <button class="btn btn-primary w-100 py-3 fw-bold" id="startStopBtn" style="border-radius: 12px; font-size: 1.1rem;">
+                            <i class="bi bi-play-circle me-2"></i>开始检测
+                        </button>
+                    </div>
+                    <div class="col-md-5 mb-2">
+                        <button class="btn btn-success w-100 py-3 fw-bold" id="captureBtn" style="border-radius: 12px; font-size: 1.1rem;">
+                            <i class="bi bi-camera me-2"></i>拍摄截图
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-danger" id="errorMessage">
+                <span id="errorText"></span>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">检测结果</h5>
+                </div>
+                <div class="card-body">
+                    <div class="detection-list" id="detectionList">
+                        <div class="text-center text-muted py-3">
+                            等待检测结果...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 截图模态框 -->
+<div class="modal fade" id="screenshotModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">检测截图</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="screenshotImage" class="img-fluid" alt="检测截图">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <a id="downloadLink" href="#" class="btn btn-primary" download="detection_screenshot.jpg">
+                    下载截图
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const videoElement = document.getElementById('videoElement');
+        const canvasElement = document.getElementById('canvasElement');
+        const ctx = canvasElement.getContext('2d');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const detectionList = document.getElementById('detectionList');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        
+        let isStreaming = false;
+        let isDetecting = false;
+        let stream = null;
+        let startTime = new Date();
+        let detectionHistory = [];
+        let detectionInterval = null;
+        let fpsInterval = null;
+        let frameCount = 0;
+        let lastFpsTime = Date.now();
+        
+        
+        // 更新检测列表
+        function updateDetectionList() {
+            if (detectionHistory.length === 0) {
+                detectionList.innerHTML = '<div class="text-center text-muted py-3">等待检测结果...</div>';
+                return;
+            }
+            
+            detectionList.innerHTML = '';
+            detectionHistory.forEach(detection => {
+                const item = document.createElement('div');
+                item.className = 'detection-item';
+                
+                // 根据置信度设置颜色
+                const confidence = parseFloat(detection.confidence);
+                let confidenceClass = 'text-danger';
+                if (confidence > 0.9) confidenceClass = 'text-success';
+                else if (confidence > 0.8) confidenceClass = 'text-primary';
+                else if (confidence > 0.7) confidenceClass = 'text-warning';
+                
+                item.innerHTML = `
+                    <div class="fw-bold">${detection.class}</div>
+                    <div class="d-flex justify-content-between">
+                        <span class="${confidenceClass}">置信度: ${detection.confidence}</span>
+                        <small class="text-muted">${detection.time}</small>
+                    </div>
+                `;
+                detectionList.appendChild(item);
+            });
+        }
+        
+        // 启动摄像头
+        async function startCamera() {
+            try {
+                statusText.textContent = '正在请求摄像头权限...';
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                videoElement.srcObject = stream;
+                
+                // 等待视频加载
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = () => {
+                        videoElement.play();
+                        resolve();
+                    };
+                });
+                
+                // 设置canvas大小
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+                
+                isStreaming = true;
+                statusText.textContent = '摄像头已就绪，点击开始检测';
+                statusIndicator.classList.add('status-live');
+                
+                // 开始绘制视频帧
+                drawFrame();
+                
+                // 默认不开始检测，等待用户点击开始检测按钮
+                
+                errorMessage.style.display = 'none';
+            } catch (error) {
+                console.error('无法访问摄像头:', error);
+                errorMessage.style.display = 'block';
+                errorText.textContent = '无法打开摄像头: ' + error.message + '。请确保已授予摄像头权限。';
+                statusText.textContent = '摄像头启动失败';
+                statusIndicator.classList.remove('status-live');
+            }
+        }
+        
+        // 绘制视频帧到canvas
+        function drawFrame() {
+            if (!isStreaming) return;
+            
+            ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            requestAnimationFrame(drawFrame);
+        }
+        
+        // 发送帧到后端进行检测
+        async function detectFrame() {
+            if (!isDetecting || !isStreaming) return;
+            
+            try {
+                // 捕获当前帧
+                const frameData = canvasElement.toDataURL('image/jpeg', 0.8);
+                
+                // 发送到后端
+                const response = await fetch('/api/detect/camera/frame', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ frame: frameData })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 显示检测结果帧
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.drawImage(img, 0, 0, canvasElement.width, canvasElement.height);
+                    };
+                    img.src = data.frame;
+                    
+                    
+                    // 更新检测历史
+                    const now = new Date().toLocaleTimeString();
+                    
+                    if (data.detections && data.detections.length > 0) {
+                        // 清空旧的检测历史
+                        detectionHistory = [];
+                        
+                        data.detections.forEach(detection => {
+                            detectionHistory.push({
+                                class: detection.class_name,
+                                confidence: detection.confidence.toFixed(2),
+                                time: now
+                            });
+                        });
+                        
+                        // 最多保留10条
+                        if (detectionHistory.length > 10) {
+                            detectionHistory = detectionHistory.slice(0, 10);
+                        }
+                    } else {
+                        // 没有检测到物体时，显示提示信息
+                        detectionHistory = [{
+                            class: '未检测到中草药',
+                            confidence: '---',
+                            time: now
+                        }];
+                    }
+                    
+                    updateDetectionList();
+                } else {
+                    console.error('检测失败:', data.error);
+                }
+            } catch (error) {
+                console.error('检测请求失败:', error);
+            }
+        }
+        
+        // 开始检测
+        function startDetection() {
+            if (detectionInterval) return;
+            
+            isDetecting = true;
+            // 每300ms检测一次
+            detectionInterval = setInterval(detectFrame, 300);
+        }
+        
+        // 停止检测
+        function stopDetection() {
+            isDetecting = false;
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+        }
+        
+        // 停止摄像头
+        function stopCamera() {
+            isStreaming = false;
+            stopDetection();
+            
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            statusText.textContent = '已停止';
+            statusIndicator.classList.remove('status-live');
+        }
+        
+        // 智能检测按钮
+        startStopBtn.addEventListener('click', function() {
+            if (isDetecting) {
+                stopDetection();
+                startStopBtn.innerHTML = '<i class="bi bi-play-circle me-2"></i>智能检测';
+                startStopBtn.classList.remove('btn-danger');
+                startStopBtn.classList.add('btn-primary');
+                statusText.textContent = '已暂停';
+            } else {
+                startDetection();
+                startStopBtn.innerHTML = '<i class="bi bi-pause-circle me-2"></i>暂停检测';
+                startStopBtn.classList.remove('btn-primary');
+                startStopBtn.classList.add('btn-danger');
+                statusText.textContent = '实时检测中';
+            }
+        });
+        
+        // 截图按钮
+        captureBtn.addEventListener('click', function() {
+            if (!isStreaming) {
+                alert('请先启动摄像头');
+                return;
+            }
+            
+            // 显示截图
+            const dataURL = canvasElement.toDataURL('image/jpeg');
+            document.getElementById('screenshotImage').src = dataURL;
+            document.getElementById('downloadLink').href = dataURL;
+            
+            const screenshotModal = new bootstrap.Modal(document.getElementById('screenshotModal'));
+            screenshotModal.show();
+        });
+        
+        
+        // 页面卸载时停止摄像头
+        window.addEventListener('beforeunload', stopCamera);
+        
+        // 启动摄像头
+        startCamera();
+    });
+</script>
+{% endblock %} 

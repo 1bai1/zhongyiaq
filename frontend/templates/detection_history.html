@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+
+{% block title %}检测历史记录 - 中医药问答系统{% endblock %}
+
+{% block page_title %}中草药识别历史{% endblock %}
+
+{% block content %}
+<style>
+    /* 移除了检测记录列表框和刷新按钮相关的样式 */
+    
+    .detection-card {
+        transition: all 0.3s ease;
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+        background: white;
+    }
+    
+    .detection-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .detection-card .card-header {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        border-bottom: none;
+        padding: 15px 20px;
+    }
+    
+    .detection-card .card-body {
+        padding: 20px;
+    }
+    
+    .detection-card .card-footer {
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        padding: 15px 20px;
+    }
+    
+    .detection-image {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .detection-image:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .video-placeholder {
+        border-radius: 8px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px dashed #dee2e6;
+        transition: all 0.3s ease;
+    }
+    
+    .video-placeholder:hover {
+        border-color: #007bff;
+        background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%);
+    }
+    
+    .info-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f3f4;
+        transition: all 0.2s ease;
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+    }
+    
+    .info-item:hover {
+        background: rgba(0, 123, 255, 0.02);
+        padding-left: 5px;
+        border-radius: 4px;
+    }
+    
+    .btn-view-details {
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-view-details:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    }
+    
+    .loading-container {
+        padding: 60px 20px;
+        text-align: center;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border-radius: 12px;
+        border: 2px dashed #dee2e6;
+    }
+</style>
+
+<div id="detection-records-container" class="row">
+    <div class="col-12">
+        <div class="loading-container">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mb-0">正在加载检测记录...</p>
+        </div>
+    </div>
+</div>
+
+    <!-- 详情模态框 -->
+    <div class="modal fade" id="detectionDetailModal" tabindex="-1" aria-labelledby="detectionDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detectionDetailModalLabel">检测详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6>原始图像</h6>
+                            <img id="detail-original-img" src="" class="img-fluid img-thumbnail" alt="原始图像">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6>检测结果</h6>
+                            <img id="detail-result-img" src="" class="img-fluid img-thumbnail" alt="检测结果">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h6>检测信息</h6>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th width="20%">检测时间</th>
+                                <td id="detail-time"></td>
+                            </tr>
+                            <tr>
+                                <th>文件名</th>
+                                <td id="detail-filename"></td>
+                            </tr>
+                            <tr>
+                                <th>检测数量</th>
+                                <td id="detail-count"></td>
+                            </tr>
+                            <tr>
+                                <th>用时</th>
+                                <td id="detail-elapsed"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="mt-3">
+                        <h6>检测结果列表</h6>
+                        <table class="table table-striped" id="detail-results-table">
+                            <thead>
+                                <tr>
+                                    <th>序号</th>
+                                    <th>类别</th>
+                                    <th>置信度</th>
+                                    <th>位置</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 检测结果内容会动态添加 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取检测历史记录
+        function loadDetectionHistory() {
+            const container = document.getElementById('detection-records-container');
+            container.innerHTML = '<div class="col-12 text-center"><p>正在加载数据...</p></div>';
+            
+            fetch('/api/logs/detection')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        container.innerHTML = '';
+                        
+                        if (data.logs.length === 0) {
+                            container.innerHTML = '<div class="col-12 text-center"><p>暂无检测记录</p></div>';
+                            return;
+                        }
+                        
+                        // 按时间降序排序
+                        data.logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                        
+                        // 生成卡片
+                        data.logs.forEach((log, index) => {
+                            if (!log.details) return;
+                            
+                            const detectionCard = document.createElement('div');
+                            detectionCard.className = 'col-md-6 col-lg-4 mb-4';
+                            
+                            // 格式化时间
+                            const timestamp = new Date(log.timestamp);
+                            const formattedTime = `${timestamp.getFullYear()}-${(timestamp.getMonth() + 1).toString().padStart(2, '0')}-${timestamp.getDate().toString().padStart(2, '0')} ${timestamp.getHours().toString().padStart(2, '0')}:${timestamp.getMinutes().toString().padStart(2, '0')}`;
+                            
+                            // 判断是图像检测还是视频检测
+                            const isVideoDetection = log.action === 'detect_video';
+                            
+                            // 生成类别统计和结果图片路径
+                            let detectionSummary = '';
+                            let resultImage = '';
+                            let cardFooterContent = '';
+                            
+                            if (isVideoDetection) {
+                                // 视频检测记录
+                                detectionSummary = '视频检测完成';
+                                resultImage = ''; // 视频不显示图片，使用CSS样式
+                                const fileName = log.details.result_path ? log.details.result_path.split('/').pop() : '';
+                                cardFooterContent = `
+                                    <button class="btn btn-sm btn-primary view-details" data-log='${JSON.stringify(log).replace(/'/g, "\\'")}'>
+                                        查看详情
+                                    </button>
+                                    ${fileName ? `<a href="/api/detect/download_video/${fileName}" class="btn btn-sm btn-success ms-2" download>下载视频</a>` : ''}
+                                `;
+                            } else {
+                                // 图像检测记录
+                                if (log.details.detections && log.details.detections.length > 0) {
+                                    // 按类别分组统计
+                                    const classCounts = {};
+                                    log.details.detections.forEach(detection => {
+                                        const className = detection.class_name;
+                                        classCounts[className] = (classCounts[className] || 0) + 1;
+                                    });
+                                    
+                                    // 转为数组并显示前三个类别
+                                    const classCountArray = Object.entries(classCounts).map(([className, count]) => ({ className, count }));
+                                    classCountArray.sort((a, b) => b.count - a.count);
+                                    
+                                    detectionSummary = classCountArray.slice(0, 3).map(item => `${item.className}: ${item.count}`).join(', ');
+                                    if (classCountArray.length > 3) {
+                                        detectionSummary += `...等${classCountArray.length}种类别`;
+                                    }
+                                } else {
+                                    detectionSummary = '未检测到目标';
+                                }
+                                
+                                // 获取检测图片路径
+                                resultImage = log.details.result_filename ? 
+                                    `/static/uploads/${log.details.result_filename}` : '';
+                                
+                                cardFooterContent = `
+                                    <button class="btn btn-sm btn-primary view-details" data-log='${JSON.stringify(log).replace(/'/g, "\\'")}'>
+                                        查看详情
+                                    </button>
+                                `;
+                            }
+                            
+                            detectionCard.innerHTML = `
+                                <div class="card h-100 detection-card">
+                                    <div class="card-header">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h6 class="card-title mb-0 text-white">
+                                                <i class="bi ${isVideoDetection ? 'bi-camera-video' : 'bi-image'} me-2"></i>
+                                                ${log.details.filename || '未知文件'}
+                                            </h6>
+                                            <small class="text-white-50">${formattedTime}</small>
+                                        </div>
+                                    </div>
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="mb-3">
+                                            ${isVideoDetection ? 
+                                                `<div class="video-placeholder d-flex align-items-center justify-content-center" style="height: 200px;">
+                                                    <div class="text-center">
+                                                        <i class="bi bi-play-circle" style="font-size: 3rem; color: #007bff;"></i>
+                                                        <p class="mt-2 mb-0 text-muted fw-500">视频检测结果</p>
+                                                    </div>
+                                                </div>` : 
+                                                `<img src="${resultImage}" class="img-fluid detection-image" alt="检测结果" 
+                                                    onerror="this.src='/static/img/no-image.png'; this.onerror=null;">`
+                                            }
+                                        </div>
+                                        <div class="mt-auto">
+                                            <div class="info-item">
+                                                <strong class="text-primary">类型:</strong> 
+                                                <span class="ms-2">${isVideoDetection ? '视频检测' : '图像检测'}</span>
+                                            </div>
+                                            <div class="info-item">
+                                                <strong class="text-primary">检测数量:</strong> 
+                                                <span class="ms-2">${log.details.detection_count || (isVideoDetection ? '视频处理' : 0)}</span>
+                                            </div>
+                                            <div class="info-item">
+                                                <strong class="text-primary">检测结果:</strong> 
+                                                <span class="ms-2 text-truncate d-inline-block" style="max-width: 200px;" title="${detectionSummary}">${detectionSummary}</span>
+                                            </div>
+                                            <div class="info-item">
+                                                <strong class="text-primary">用时:</strong> 
+                                                <span class="ms-2">${log.details.elapsed_time ? log.details.elapsed_time.toFixed(2) + '秒' : '未知'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        ${cardFooterContent.replace('btn-primary', 'btn-primary btn-view-details')}
+                                    </div>
+                                </div>
+                            `;
+                            
+                            container.appendChild(detectionCard);
+                        });
+                        
+                        // 添加详情按钮点击事件
+                        document.querySelectorAll('.view-details').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const log = JSON.parse(this.getAttribute('data-log'));
+                                showDetectionDetails(log);
+                            });
+                        });
+                    } else {
+                        container.innerHTML = `<div class="col-12 text-center"><p>加载失败: ${data.error || '未知错误'}</p></div>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('加载检测历史记录出错:', error);
+                    container.innerHTML = '<div class="col-12 text-center"><p>加载数据时发生错误</p></div>';
+                });
+        }
+        
+        // 显示检测详情
+        function showDetectionDetails(log) {
+            const modal = new bootstrap.Modal(document.getElementById('detectionDetailModal'));
+            const isVideoDetection = log.action === 'detect_video';
+            
+            // 格式化时间
+            const timestamp = new Date(log.timestamp);
+            const formattedTime = `${timestamp.getFullYear()}-${(timestamp.getMonth() + 1).toString().padStart(2, '0')}-${timestamp.getDate().toString().padStart(2, '0')} ${timestamp.getHours().toString().padStart(2, '0')}:${timestamp.getMinutes().toString().padStart(2, '0')}:${timestamp.getSeconds().toString().padStart(2, '0')}`;
+            
+            // 设置基本信息
+            document.getElementById('detectionDetailModalLabel').textContent = `${isVideoDetection ? '视频' : '图像'}检测详情 - ${log.details.filename || '未知文件'}`;
+            document.getElementById('detail-time').textContent = formattedTime;
+            document.getElementById('detail-filename').textContent = log.details.filename || '未知';
+            document.getElementById('detail-elapsed').textContent = log.details.elapsed_time ? `${log.details.elapsed_time.toFixed(2)}秒` : '未知';
+            
+            // 设置图片
+            const originalImage = document.getElementById('detail-original-img');
+            const resultImage = document.getElementById('detail-result-img');
+            
+            if (isVideoDetection) {
+                // 视频检测记录
+                document.getElementById('detail-count').textContent = '视频处理';
+                
+                // 隐藏原始图像，显示视频信息
+                originalImage.style.display = 'none';
+                const originalImageContainer = originalImage.parentElement;
+                originalImageContainer.innerHTML = `
+                    <h6>视频信息</h6>
+                    <div class="video-info bg-light p-3 rounded">
+                        <p><strong>分辨率:</strong> ${log.details.video_info ? `${log.details.video_info.width}x${log.details.video_info.height}` : '未知'}</p>
+                        <p><strong>帧率:</strong> ${log.details.video_info ? `${log.details.video_info.fps.toFixed(2)} fps` : '未知'}</p>
+                        <p><strong>总帧数:</strong> ${log.details.video_info ? log.details.video_info.total_frames : '未知'}</p>
+                        <p class="mb-0"><strong>处理状态:</strong> 已完成</p>
+                    </div>
+                `;
+                
+                // 显示下载按钮
+                const fileName = log.details.result_path ? log.details.result_path.split('/').pop() : '';
+                resultImage.style.display = 'none';
+                const resultImageContainer = resultImage.parentElement;
+                resultImageContainer.innerHTML = `
+                    <h6>处理结果</h6>
+                    <div class="video-result bg-light p-3 rounded text-center">
+                        <i class="bi bi-play-circle" style="font-size: 3rem; color: #6c757d;"></i>
+                        <p class="mt-2 mb-3">视频检测处理完成</p>
+                        ${fileName ? `<a href="/api/detect/download_video/${fileName}" class="btn btn-success" download>下载检测结果视频</a>` : '<p class="text-muted">结果文件不可用</p>'}
+                    </div>
+                `;
+            } else {
+                // 图像检测记录
+                document.getElementById('detail-count').textContent = log.details.detection_count || 0;
+                
+                // 恢复图像显示
+                originalImage.style.display = 'block';
+                resultImage.style.display = 'block';
+                originalImage.onerror = function() { this.src = '/static/img/no-image.png'; this.onerror = null; };
+                originalImage.src = '';  // 先清空，避免显示上一次的图片
+                
+                resultImage.onerror = function() { this.src = '/static/img/no-image.png'; this.onerror = null; };
+                resultImage.src = '';  // 先清空，避免显示上一次的图片
+                
+                // 设置检测图片路径
+                if (log.details.result_filename) {
+                    resultImage.src = `/static/uploads/${log.details.result_filename}`;
+                }
+            }
+            
+            // 清空检测结果表格
+            const resultsTable = document.getElementById('detail-results-table').querySelector('tbody');
+            resultsTable.innerHTML = '';
+            
+            // 填充检测结果表格
+            if (isVideoDetection) {
+                // 视频检测显示处理信息
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="4" class="text-center">视频检测不显示具体检测结果，请下载视频查看</td>';
+                resultsTable.appendChild(row);
+            } else if (log.details.detections && log.details.detections.length > 0) {
+                // 图像检测显示检测结果
+                log.details.detections.forEach((detection, index) => {
+                    const row = document.createElement('tr');
+                    
+                    // 格式化位置信息
+                    const box = detection.box.map(val => Math.round(val)).join(', ');
+                    
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${detection.class_name}</td>
+                        <td>${(detection.confidence * 100).toFixed(2)}%</td>
+                        <td>${box}</td>
+                    `;
+                    
+                    resultsTable.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="4" class="text-center">未检测到目标</td>';
+                resultsTable.appendChild(row);
+            }
+            
+            modal.show();
+        }
+        
+        // 初始加载
+        loadDetectionHistory();
+        
+        // 移除了刷新按钮，页面加载时自动获取数据
+    });
+</script>
+{% endblock %} 
